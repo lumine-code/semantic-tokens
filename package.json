@@ -1,0 +1,60 @@
+{
+  "name": "semantic-tokens",
+  "author": "lumine-code",
+  "description": "Layer semantic highlighting over the grammar's own.",
+  "repository": "https://github.com/lumine-code/semantic-tokens",
+  "bugs": {
+    "url": "https://github.com/lumine-code/semantic-tokens/issues"
+  },
+  "keywords": [
+    "highlighting",
+    "identifiers",
+    "syntax",
+    "lsp"
+  ],
+  "version": "1.0.0",
+  "license": "MIT",
+  "engines": {
+    "lumine": "^1.0.0"
+  },
+  "backgroundTips": [
+    "{% if keys['semantic-tokens:toggle'] %}You can switch the semantic highlighting layer with {{ 'semantic-tokens:toggle' | keystroke }}{% else %}Semantic tokens color identifiers the way the language server understands them — a parameter apart from a local, a class apart from a namespace. They can be switched off per language in the settings.{% endif %}"
+  ],
+  "main": "./lib/main",
+  "files": [
+    "docs",
+    "lib",
+    "menus",
+    "spec",
+    "styles"
+  ],
+  "scripts": {
+    "test": "lumine --test spec",
+    "lint": "eslint . --max-warnings 0",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "consumedServices": {
+    "semantic-tokens.provider": {
+      "versions": {
+        "^1.0.0": "consumeSemanticTokens"
+      }
+    }
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.8.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-n": "^18.3.0",
+    "globals": "^17.11.0",
+    "prettier": "^3.9.6"
+  },
+  "configSchema": {
+    "enabled": {
+      "title": "Enabled",
+      "description": "Color identifiers with the provider's semantic classification. Also settable per language in scoped settings.",
+      "type": "boolean",
+      "default": true
+    }
+  }
+}

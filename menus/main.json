@@ -1,0 +1,16 @@
+{
+  "menu": [
+    {
+      "label": "Packages",
+      "submenu": [
+        {
+          "label": "Semantic Tokens",
+          "submenu": [
+            { "label": "Toggle", "command": "semantic-tokens:toggle" },
+            { "label": "Refresh", "command": "semantic-tokens:refresh" }
+          ]
+        }
+      ]
+    }
+  ]
+}
