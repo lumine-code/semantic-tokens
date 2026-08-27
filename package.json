@@ -53,6 +53,7 @@
     "enabled": {
       "title": "Enabled",
       "description": "Color identifiers with the provider's semantic classification. Also settable per language in scoped settings.",
+      "scopeResolution": "grammar",
       "type": "boolean",
       "default": true
     }
