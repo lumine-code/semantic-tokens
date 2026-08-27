@@ -321,6 +321,17 @@ describe("semantic-tokens", () => {
     expect(spans().length).toBe(0);
   });
 
+  it("reacts immediately to a scoped-only setting change", async () => {
+    addProvider({ semanticTokens: () => [token(0, 0, 5, "keyword")] });
+    await microtasks();
+    expect(spans().length).toBe(1);
+
+    const rootScope = editor.getRootScopeDescriptor().getScopesArray()[0];
+    lumine.config.set("semantic-tokens.enabled", false, { scopeSelector: `.${rootScope}` });
+    await microtasks();
+    expect(spans().length).toBe(0);
+  });
+
   it("drops the tokens of a provider whose subscription is disposed", async () => {
     const subscription = mainModule.consumeSemanticTokens({
       get grammarScopes() {
