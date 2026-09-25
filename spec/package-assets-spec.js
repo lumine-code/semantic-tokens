@@ -43,12 +43,14 @@ describe("semantic-tokens package assets", () => {
     expect(pkg.engines.lumine).toBe("^1.0.0");
   });
 
-  it("consumes semantic-tokens.provider and provides nothing", () => {
+  it("consumes semantic-tokens.provider and provides background tips", () => {
     const pkg = JSON.parse(read("package.json"));
     expect(pkg.consumedServices["semantic-tokens.provider"].versions["^1.0.0"]).toBe(
       "consumeSemanticTokens",
     );
-    expect(pkg.providedServices).toBeUndefined();
+    expect(pkg.providedServices["background-tips.provider"].versions["1.0.0"]).toBe(
+      "provideBackgroundTips",
+    );
   });
 
   it("keeps a keyword list that never repeats the package name", () => {

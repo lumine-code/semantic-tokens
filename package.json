@@ -17,9 +17,6 @@
   "engines": {
     "lumine": "^1.0.0"
   },
-  "backgroundTips": [
-    "{% if keys['semantic-tokens:toggle'] %}You can switch the semantic highlighting layer with {{ 'semantic-tokens:toggle' | keystroke }}{% else %}Semantic tokens color identifiers the way the language server understands them — a parameter apart from a local, a class apart from a namespace. They can be switched off per language in the settings.{% endif %}"
-  ],
   "main": "./lib/main",
   "files": [
     "docs",
@@ -33,6 +30,13 @@
     "lint": "eslint . --max-warnings 0",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
+  },
+  "providedServices": {
+    "background-tips.provider": {
+      "versions": {
+        "1.0.0": "provideBackgroundTips"
+      }
+    }
   },
   "consumedServices": {
     "semantic-tokens.provider": {
