@@ -8,7 +8,6 @@
  * scope would, so the theme colours it, and the strike follows in currentColor.
  */
 .semantic-tokens-strike {
-  text-decoration: none;
   background-image: linear-gradient(currentColor, currentColor);
   background-repeat: no-repeat;
   background-size: 100% 1px;

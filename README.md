@@ -24,6 +24,10 @@ Commands available in `lumine-workspace`:
 - `semantic-tokens:toggle`: turn the semantic highlighting layered over the grammar on or off,
 - `semantic-tokens:refresh`: ask the providers for the active file's tokens again.
 
+## Usage
+
+Install a language-server backend that supports semantic tokens, then open a file it serves. This package renders the backend's results; without a provider, the grammar's highlighting remains unchanged.
+
 ## Customization
 
 Semantic tokens can be styled in the `styles.css` file, e.g. italicize the parameters a server identified:
@@ -37,6 +41,7 @@ Semantic tokens can be styled in the `styles.css` file, e.g. italicize the param
 ## Services
 
 - [`semantic-tokens.provider`](docs/semantic-tokens.provider.md): consumed to collect the classification of the identifiers, from providers such as IDE backend packages.
+- `background-tips.provider`: provided to explain semantic highlighting in the empty workspace.
 
 ## Contributing
 

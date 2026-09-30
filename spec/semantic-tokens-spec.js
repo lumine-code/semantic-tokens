@@ -136,6 +136,32 @@ describe("semantic-tokens", () => {
     expect(classes()).toEqual(["semantic-tokens syntax--keyword"]);
   });
 
+  it("ignores an answer for text that changed while the request was pending", async () => {
+    let resolve;
+    addProvider({
+      semanticTokens: () => new Promise((done) => (resolve = done)),
+    });
+    editor.setText("let value = 1;");
+    resolve([token(0, 0, 5, "keyword")]);
+    await microtasks();
+    expect(spans().length).toBe(0);
+  });
+
+  it("refetches after a path change even when the grammar stays the same", async () => {
+    const paths = [];
+    addProvider({
+      semanticTokens: (target) => {
+        paths.push(target.getPath());
+        return [];
+      },
+    });
+    await microtasks();
+    const renamed = path.join(os.tmpdir(), "semantic-tokens-renamed.js");
+    editor.getBuffer().setPath(renamed);
+    await microtasks();
+    expect(paths[paths.length - 1]).toBe(renamed);
+  });
+
   it("clears when the only provider declines", async () => {
     let tokens = [token(0, 0, 5, "keyword")];
     const provider = addProvider({ semanticTokens: () => tokens });
@@ -182,9 +208,79 @@ describe("semantic-tokens", () => {
       await microtasks();
       expect(classes()).toEqual(["semantic-tokens syntax--string"]);
     });
+
+    it("does not ask a fallback provider after its pending range request was superseded", async () => {
+      let resolveRange;
+      const rangeAnswer = new Promise((resolve) => (resolveRange = resolve));
+      const fallback = jasmine.createSpy("fallback").and.returnValue([]);
+      addProvider({
+        priority: 2,
+        semanticTokens: () => null,
+        semanticTokensInRange: () => rangeAnswer,
+      });
+      addProvider({ priority: 1, semanticTokens: fallback });
+      await microtasks();
+      lumine.config.set("semantic-tokens.enabled", false);
+      resolveRange(null);
+      await microtasks();
+      expect(fallback).not.toHaveBeenCalled();
+    });
+
+    it("drops a removed provider's tokens even when its replacement fails", async () => {
+      const subscription = mainModule.consumeSemanticTokens({
+        priority: 2,
+        semanticTokens: () => [token(0, 0, 5, "keyword")],
+      });
+      addProvider({
+        priority: 1,
+        semanticTokens: () => Promise.reject(new Error("unavailable")),
+      });
+      await microtasks();
+      expect(spans().length).toBe(1);
+      subscription.dispose();
+      await microtasks();
+      expect(spans().length).toBe(0);
+    });
   });
 
   describe("the viewport budget", () => {
+    it("updates the viewport even while its first range answer is pending", async () => {
+      editor.setText("x\n".repeat(6000));
+      advanceClock(editor.getBuffer().stoppedChangingDelay + 1);
+      const requests = [];
+      addProvider({
+        semanticTokens: () => null,
+        semanticTokensInRange: (target, range) =>
+          new Promise((resolve) => requests.push({ range, resolve })),
+      });
+      await microtasks();
+      const element = editor.getElement();
+      element.setScrollTop(2000 * element.component.getLineHeight());
+      advanceClock(150);
+      await microtasks();
+      expect(requests.length).toBeGreaterThan(1);
+      const lastRequest = requests[requests.length - 1];
+      expect(lastRequest.range[0]).toBeGreaterThan(0);
+      for (const request of requests) request.resolve([]);
+      await microtasks();
+    });
+
+    it("does not enter range mode when a superseded range request rejects", async () => {
+      let rejectRange;
+      const provider = addProvider({
+        semanticTokens: () => null,
+        semanticTokensInRange: () => new Promise((resolve, reject) => (rejectRange = reject)),
+      });
+      await microtasks();
+      provider.semanticTokens = () => [token(0, 0, 5, "keyword")];
+      provider.invalidate();
+      await microtasks();
+      rejectRange(new Error("old request failed"));
+      await microtasks();
+      expect(stateFor().rangeMode).toBe(false);
+      expect(classes()).toEqual(["semantic-tokens syntax--keyword"]);
+    });
+
     it("switches to the visible rows when an answer is too large, and stays there", async () => {
       const ranges = [];
       let fullCalls = 0;
@@ -267,6 +363,19 @@ describe("semantic-tokens", () => {
       expect(ranges.length).toBeGreaterThan(before);
       expect(ranges[ranges.length - 1][0]).toBeGreaterThan(0);
     });
+
+    it("requests a range only once after the buffer stops changing", async () => {
+      editor.setText("x\n".repeat(6000));
+      advanceClock(editor.getBuffer().stoppedChangingDelay + 1);
+      const rangeFetch = jasmine.createSpy("rangeFetch").and.returnValue([]);
+      addProvider({ semanticTokens: () => null, semanticTokensInRange: rangeFetch });
+      await microtasks();
+      rangeFetch.calls.reset();
+      editor.insertText("y");
+      advanceClock(editor.getBuffer().stoppedChangingDelay + 1);
+      await microtasks();
+      expect(rangeFetch).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe("the commands", () => {
@@ -303,6 +412,23 @@ describe("semantic-tokens", () => {
       lumine.commands.dispatch(lumine.workspace.getElement(), "semantic-tokens:refresh");
       await microtasks();
       expect(calls.length).toBe(before + 1);
+    });
+
+    it("refreshes the editor that dispatched the command when another pane is active", async () => {
+      const calls = [];
+      addProvider({
+        semanticTokens: (target) => {
+          calls.push(target);
+          return [];
+        },
+      });
+      const other = await lumine.workspace.open();
+      await microtasks();
+      expect(lumine.workspace.getActiveTextEditor()).toBe(other);
+      calls.length = 0;
+      lumine.commands.dispatch(editor.getElement(), "semantic-tokens:refresh");
+      await microtasks();
+      expect(calls).toEqual([editor]);
     });
   });
 
@@ -344,6 +470,40 @@ describe("semantic-tokens", () => {
     subscription.dispose();
     await microtasks();
     expect(spans().length).toBe(0);
+  });
+
+  it("stops a batched marker build when highlighting is switched off", async () => {
+    editor.setText("x\n".repeat(4001));
+    advanceClock(editor.getBuffer().stoppedChangingDelay + 1);
+    const tokens = Array.from({ length: 4001 }, (_, row) => token(row, 0, 1, "variable"));
+    addProvider({ semanticTokens: () => tokens });
+    await microtasks();
+    const state = stateFor();
+    expect(state.markers.length).toBe(2000);
+    lumine.config.set("semantic-tokens.enabled", false);
+    advanceClock(0);
+    await microtasks();
+    expect(state.markers.length).toBe(0);
+    expect(state.layer.getMarkerCount()).toBe(0);
+    expect(state.layerDecoration.overridePropertiesByMarker.size).toBe(0);
+  });
+
+  it("disposes pending work and restores one working manager after reactivation", async () => {
+    jasmine.useRealClock();
+    let resolve;
+    addProvider({ semanticTokens: () => new Promise((done) => (resolve = done)) });
+    const previousManager = manager;
+    await lumine.packages.deactivatePackage("semantic-tokens");
+    const pack = await lumine.packages.activatePackage(packageRoot);
+    mainModule = pack.mainModule;
+    manager = mainModule.manager;
+    resolve([token(0, 0, 5, "string")]);
+    addProvider({ semanticTokens: () => [token(0, 0, 5, "keyword")] });
+    await microtasks();
+    expect(previousManager.states.size).toBe(0);
+    expect(classes()).toEqual(["semantic-tokens syntax--keyword"]);
+    lumine.commands.dispatch(lumine.workspace.getElement(), "semantic-tokens:toggle");
+    expect(lumine.config.get("semantic-tokens.enabled")).toBe(false);
   });
 });
 

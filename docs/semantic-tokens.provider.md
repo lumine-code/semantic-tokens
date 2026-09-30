@@ -76,9 +76,9 @@ The consumer decides how much of the buffer to ask for, and the provider only an
 - **Whole document** is the default, and `semanticTokens(editor)` is asked.
 - **Viewport only** is what a large file gets — past 5000 lines, or once a whole-document answer came back with more than 20000 tokens. `semanticTokensInRange(editor, [startBufferRow, endBufferRow])` is asked instead, with an inclusive row range covering the screen plus a margin.
 
-Viewport-only mode is **sticky for that editor**: once a budget trips, the whole-document request is not retried, because it would only trip the budget again. Each scroll then asks for the rows that came into view.
+Viewport-only mode is **sticky for that editor** once a range request answers or fails transiently: the whole-document request is not retried, because it would only trip the budget again. Scrolling, folding and changes to the viewport size then ask for the rows that came into view, including while the first range request is still pending.
 
-A provider that cannot serve ranges gets asked for the whole document until a budget trips, and then steps aside — the editor renders no semantic tokens at all rather than paying for a marker per token in a huge file.
+A provider that cannot serve ranges gets asked for the whole document until a budget trips, and then steps aside so another provider may serve it. If none can, the editor renders no semantic tokens rather than paying for a marker per token in a huge file. An unsupported range request does not make viewport-only mode sticky, so a provider that gains capabilities later can be tried again.
 
 ## Return outcomes
 
@@ -118,7 +118,7 @@ module.exports = {
 
 **One provider classifies an editor.** They are tried in descending `priority`, and the first that does not decline owns it; nobody else is asked. This is unlike the hub contracts that fan in, and the reason is the rendering: two token sets over the same rows would merge their classes onto one span.
 
-Tokens are fetched when an editor is opened, when the buffer stops changing, when the grammar changes, and — in viewport-only mode — when scrolling settles. Markers are rebuilt from the answer each time rather than diffed, in batches that yield to the main thread so a large file cannot freeze the window.
+Tokens are fetched when an editor is opened, when the buffer stops changing, when the grammar or file path changes, and — in viewport-only mode — when the visible buffer rows change. Answers for text edited while a request was pending are discarded immediately. Markers are rebuilt from the answer each time rather than diffed, in batches that yield to the main thread so a large file cannot freeze the window.
 
 `grammarScopes` is **read through on every call, never snapshotted**. That is deliberate: a hub provider exposes it as a getter whose value changes as language server sessions come and go. A plain array is fine for a fixed set of grammars, but do not assume the registry cached it.
 
