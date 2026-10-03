@@ -9,7 +9,7 @@ Tokens come from provider packages — typically language-server backends — an
 - **Semantic classification**: colors each identifier by the classification its provider computed, which a grammar alone cannot know.
 - **Theme-ready**: decorates with the conventional `syntax--*` classes, so the theme you already use colors semantic tokens without knowing they exist.
 - **Augments the grammar**: layers over the existing highlighting rather than replacing it, so an unclassified identifier keeps the color it had.
-- **Big-file budgets**: switches to the visible rows past a size budget, and steps aside entirely when the provider cannot serve ranges.
+- **Big-file budgets**: caches the full classification while decorating only nearby rows, so scrolling applies colors immediately without a request for each viewport. Providers that only serve ranges are fetched after scrolling settles.
 - **Deprecated strike**: draws a deprecation as a background line, so a linter underline on the same span survives beside it.
 - **Per language**: on everywhere by default, and can be switched off for one language and not the rest through scoped settings.
 

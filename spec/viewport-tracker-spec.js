@@ -80,6 +80,18 @@ describe("semantic token viewport tracking", () => {
     expect(requests).toEqual([[0, 300]]);
   });
 
+  it("announces viewport changes immediately while deferring remote range requests", () => {
+    const changed = [];
+    tracker.onDidChangeViewport(({ editor: target }) => changed.push(target));
+    editor.getLastVisibleScreenRow.and.returnValue(200);
+    resizeObservers[0].callback();
+    expect(changed).toEqual([editor]);
+    expect(requests).toEqual([]);
+    expect(tracker.visibleRangeForEditor(editor)).toEqual([0, 200]);
+    advanceClock(150);
+    expect(requests).toEqual([[0, 250]]);
+  });
+
   it("requests the first measured viewport after an unrendered editor is revealed", () => {
     editor.getFirstVisibleScreenRow.and.returnValue(NaN);
     editor.getLastVisibleScreenRow.and.returnValue(NaN);
@@ -106,6 +118,8 @@ describe("semantic token viewport tracking", () => {
   });
 
   it("disconnects observers and ignores queued callbacks after disposal", () => {
+    const changed = [];
+    tracker.onDidChangeViewport(({ editor: target }) => changed.push(target));
     editor.getLastVisibleScreenRow.and.returnValue(200);
     resizeObservers[0].callback();
     tracker.dispose();
@@ -115,5 +129,6 @@ describe("semantic token viewport tracking", () => {
     intersect(intersectionObservers[0], 800, 400);
     advanceClock(150);
     expect(requests).toEqual([]);
+    expect(changed).toEqual([editor]);
   });
 });
