@@ -9,7 +9,7 @@ Supplies the classification of the identifiers rendered over the grammar's highl
 | Consumed by | `consumeSemanticTokens(provider)` returning a `Disposable`          |
 | Owner       | [`semantic-tokens`](https://github.com/lumine-code/semantic-tokens) |
 
-If your tokens come from a language server, register an adapter with `ide-client` instead — it already provides this service on every adapter's behalf. Implement this directly only for a source that is not LSP: a compiler you already run, an index of your own.
+If your tokens come from a language server, register an adapter with `ide` instead — it already provides this service on every adapter's behalf. Implement this directly only for a source that is not LSP: a compiler you already run, an index of your own.
 
 ## Registration
 
@@ -61,7 +61,7 @@ Optional members:
 | `semanticTokensInRange(editor, range)` | The tokens inside the row range. Leaving it out, or returning `null`, means you cannot serve ranges. |
 | `onDidInvalidate(callback)`            | Announce that your tokens went stale. Pass `{editor}` to refetch one, nothing to refetch all.        |
 | `grammarScopes`                        | Scope names you serve. **Omitting it means every grammar.** May be a getter — see Behavior.          |
-| `priority`                             | Decides who classifies an editor when several could. Defaults to `0`; `ide-client` uses `2`.         |
+| `priority`                             | Decides who classifies an editor when several could. Defaults to `0`; `ide` uses `2`.                |
 
 A token is **single-line**: `row` and `column` are buffer coordinates, and `length` counts characters from there. A zero length renders nothing and is skipped. Tokens may arrive in any order but must not overlap — an overlap makes two classifications share one span, which is a classification neither of them sent.
 
