@@ -147,6 +147,100 @@ describe("semantic-tokens", () => {
     expect(spans().length).toBe(0);
   });
 
+  describe("editing around a semantic token", () => {
+    for (const { name, position, text, range } of [
+      {
+        name: "a trailing space",
+        position: [2, 19],
+        text: " ",
+        range: [
+          [2, 15],
+          [2, 19],
+        ],
+      },
+      {
+        name: "a trailing newline",
+        position: [2, 19],
+        text: "\n",
+        range: [
+          [2, 15],
+          [2, 19],
+        ],
+      },
+      {
+        name: "a leading space",
+        position: [2, 15],
+        text: " ",
+        range: [
+          [2, 16],
+          [2, 20],
+        ],
+      },
+      {
+        name: "a leading newline",
+        position: [2, 15],
+        text: "\n",
+        range: [
+          [3, 0],
+          [3, 4],
+        ],
+      },
+    ]) {
+      it(`keeps the token visible after inserting ${name} while its refresh is pending`, async () => {
+        editor.setText("+prog maxima\nhead trace\ntrac 2345,2346 spri\nend");
+        advanceClock(editor.getBuffer().stoppedChangingDelay + 1);
+        let resolve;
+        const fresh = [token(range[0][0], range[0][1], 4, "enum")];
+        const provider = addProvider({ semanticTokens: () => [token(2, 15, 4, "enum")] });
+        await microtasks();
+        const [marker] = stateFor().markers;
+        provider.semanticTokens = () => new Promise((done) => (resolve = done));
+        editor.setCursorBufferPosition(position);
+        editor.insertText(text);
+
+        const expectUnchangedToken = () => {
+          expect(marker.isValid()).toBe(true);
+          expect(marker.getBufferRange()).toEqual(range);
+          expect(editor.getTextInBufferRange(marker.getBufferRange())).toBe("spri");
+          expect(spans().map((span) => span.textContent)).toEqual(["spri"]);
+          expect(classes()).toEqual([propertiesFor("enum", []).class]);
+        };
+        await microtasks();
+        expectUnchangedToken();
+        advanceClock(editor.getBuffer().stoppedChangingDelay + 1);
+        await microtasks();
+        expectUnchangedToken();
+
+        resolve(fresh);
+        await microtasks();
+        expect(marker.isDestroyed()).toBe(true);
+        expect(classes()).toEqual([propertiesFor("enum", []).class]);
+        expect(spans().map((span) => span.textContent)).toEqual(["spri"]);
+      });
+    }
+
+    it("removes an edited token's stale classification until the provider answers", async () => {
+      editor.setText("+prog maxima\nhead trace\ntrac 2345,2346 spri\nend");
+      advanceClock(editor.getBuffer().stoppedChangingDelay + 1);
+      let resolve;
+      const provider = addProvider({ semanticTokens: () => [token(2, 15, 4, "enum")] });
+      await microtasks();
+      const [marker] = stateFor().markers;
+      provider.semanticTokens = () => new Promise((done) => (resolve = done));
+      editor.setCursorBufferPosition([2, 17]);
+      editor.insertText("x");
+      await microtasks();
+      expect(marker.isValid()).toBe(false);
+      expect(spans().length).toBe(0);
+      advanceClock(editor.getBuffer().stoppedChangingDelay + 1);
+      await microtasks();
+      expect(spans().length).toBe(0);
+      resolve([]);
+      await microtasks();
+      expect(stateFor().markers.length).toBe(0);
+    });
+  });
+
   it("refetches after a path change even when the grammar stays the same", async () => {
     const paths = [];
     addProvider({
