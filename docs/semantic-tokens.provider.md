@@ -119,7 +119,17 @@ module.exports = {
 
 **One provider classifies an editor.** They are tried in descending `priority`, and the first that does not decline owns it; nobody else is asked. This is unlike the hub contracts that fan in, and the reason is the rendering: two token sets over the same rows would merge their classes onto one span.
 
-Tokens are fetched when an editor is opened, when the buffer stops changing, when the grammar or file path changes, and — in remote viewport mode — when the visible buffer rows change. Cached tokens are discarded as soon as the source changes, and answers for text edited while a request was pending are discarded immediately. Cached viewport markers are rebuilt only when visible rows leave the previously decorated margin. Marker batches yield to the main thread when needed so a large answer cannot freeze the window.
+Tokens are fetched when an editor is opened, when the buffer stops changing, when the grammar or file path changes, and — in remote viewport mode — when the visible buffer rows change. While the next answer is pending, the last classification follows buffer edits. A fresh answer replaces that classification; answers for text edited while a request was pending are discarded immediately.
+
+### Edit tracking
+
+The consumer owns the edit rules for semantic tokens. Its marker layer supplies a `trackRanges` callback to the editor's generic range-tracking hook; the core knows no token types or identifier rules. The same package-owned policy updates cached token records without allocating markers. Buffer `onDidApplyChanges` batches are processed in their reported order: each edit has its own coordinates, and intermediate edits remain present even when they cancel each other. Providers return coordinates for the current buffer contents and do not track existing rendered ranges themselves.
+
+Same-line edits inside a token retain its classification and adjust its range. Identifier characters typed or pasted immediately at either boundary join the token, including Unicode characters, `_` and `$`; spaces, punctuation and newlines inserted beside it stay outside. A newline or multiline paste inside a token retains only the original prefix before the edit. Partial deletion trims the surviving range, and deleting the whole token removes it. This tracking preserves colors while typing, but the provider's next answer determines whether the changed text still has that classification.
+
+Cached viewport rendering tracks the full classification through edits, so scrolling can decorate the current ranges while a refresh is pending. A package-owned index updates affected token records and shifts later ranges lazily, without copying or scanning the full classification for every keystroke. Viewport queries visit only the relevant part of the index. The index keeps one node per token, trading additional memory for bounded edit and viewport work. Its markers are rebuilt only when visible rows leave the previously decorated margin. Marker batches yield to the main thread when needed so a large answer cannot freeze the window.
+
+### Provider scopes and settings
 
 `grammarScopes` is **read through on every call, never snapshotted**. That is deliberate: a hub provider exposes it as a getter whose value changes as language server sessions come and go. A plain array is fine for a fixed set of grammars, but do not assume the registry cached it.
 
