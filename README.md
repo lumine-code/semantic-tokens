@@ -13,6 +13,8 @@ Tokens come from provider packages — typically language-server backends — an
 - **Deprecated strike**: draws a deprecation as a background line, so a linter underline on the same span survives beside it.
 - **Per language**: on everywhere by default, and can be switched off for one language and not the rest through scoped settings.
 
+![Apply semantic classifications from the TypeScript server.](.github/demo.png)
+
 ## Installation
 
 To install `semantic-tokens` search for it in the Install pane of the Lumine settings, or run the command `lumine --install lumine-code/semantic-tokens`.

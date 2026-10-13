@@ -1,0 +1,17 @@
+{
+  "title": "semantic-tokens",
+  "description": "Apply semantic classifications from the TypeScript server.",
+  "recordedOn": "2026-10-13",
+  "sourceRevision": "fcc2f05bcaffc9da282de124e5a71fe40a64ffcd",
+  "mode": "normal",
+  "fontSettings": "default",
+  "themeSourceRevision": "6564a9e21899b5541e9c8f8006f9be6d6d72e6ad",
+  "images": [
+    {
+      "file": "demo.png",
+      "label": "Apply semantic classifications from the TypeScript server.",
+      "width": 1150,
+      "height": 600
+    }
+  ]
+}
