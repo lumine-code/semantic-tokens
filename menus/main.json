@@ -8,7 +8,9 @@
           "submenu": [
             {
               "label": "Semantic Tokens",
-              "command": "semantic-tokens:toggle"
+              "command": "semantic-tokens:toggle",
+              "group": "intelligence",
+              "order": 30
             }
           ]
         }
