@@ -1,17 +1,101 @@
 {
   "title": "semantic-tokens",
   "description": "Apply semantic classifications from the TypeScript server.",
-  "recordedOn": "2026-10-13",
-  "sourceRevision": "fcc2f05bcaffc9da282de124e5a71fe40a64ffcd",
+  "recordedOn": "2026-10-14",
+  "sourceRevision": "3f04814fbe0ef785b9a248b54edda1a8b6eaab96",
+  "themeSourceRevision": "7fbd047a87ecf1367c896b19ff270cdc28d319f7",
   "mode": "normal",
   "fontSettings": "default",
-  "themeSourceRevision": "6564a9e21899b5541e9c8f8006f9be6d6d72e6ad",
+  "scenario": "demo.js",
+  "recipeHash": "71485919cbe2736fa7e481017131f1ad2c6900e605646eefbb7de7626aa500ef",
+  "environment": {
+    "platform": "win32",
+    "arch": "x64",
+    "electron": "44.7.0",
+    "chrome": "152.0.7977.130",
+    "devicePixelRatio": 1,
+    "locale": "en-GB",
+    "fontFamily": "Fira Code, Menlo, DejaVu Sans Mono, Consolas, monospace",
+    "fontSize": 14,
+    "themes": ["one-day-syntax", "one-day-ui"]
+  },
+  "viewport": { "width": 1150, "height": 600 },
+  "cornerRadius": 10,
+  "sources": {
+    "editor": {
+      "revision": "f843acddbced9b8bd7bbe0a96005bb55429694ce",
+      "dirty": false,
+      "workingTreeHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "package": {
+      "revision": "3f04814fbe0ef785b9a248b54edda1a8b6eaab96",
+      "dirty": true,
+      "workingTreeHash": "b025e38b2c17478dca707a9f747e9e2618a52c44a9045bf34c4b44497e1bef5a"
+    },
+    "semantic-tokens": {
+      "revision": "3f04814fbe0ef785b9a248b54edda1a8b6eaab96",
+      "dirty": true,
+      "workingTreeHash": "b025e38b2c17478dca707a9f747e9e2618a52c44a9045bf34c4b44497e1bef5a"
+    },
+    "documentation-view": {
+      "revision": "eedd6f69e19677399ddd9617858da255bb8f189c",
+      "dirty": true,
+      "workingTreeHash": "070afa5c708e3223333074671734968384f9f9554ddfb2633afc5de10cc754fe"
+    },
+    "hover": {
+      "revision": "4db1205d5c41405ba1d5c0d741eeaf3399e3693f",
+      "dirty": true,
+      "workingTreeHash": "a395c209f899af107515f7fdfbf4f05caacf0852fe6e2fd7c81e01a3f62916f6"
+    },
+    "ide": {
+      "revision": "812c09829d25abb79f6292280d1eb54fc80b6c82",
+      "dirty": true,
+      "workingTreeHash": "621e6855f75f1585be31afa484047d4a9ce6a07fb26a1cf14a842af78dd7c037"
+    },
+    "ide-typescript": {
+      "revision": "a6fc886a96b18620cca73393d9dc1baec3342963",
+      "dirty": false,
+      "workingTreeHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "language-typescript": {
+      "revision": "b2c0f69d529ec600f3ff5baf2635a27560b318c8",
+      "dirty": false,
+      "workingTreeHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "linter": {
+      "revision": "adec0e9d64ffe64f9e041df825324efc0795601b",
+      "dirty": true,
+      "workingTreeHash": "bc72c0afefb416d396eb209e3ef758b6ef4cb17d5a24d3d4af95b1b4fbdb8e75"
+    },
+    "linter-panel": {
+      "revision": "52b4727794bf840757d2c6ec818329f954ecfb25",
+      "dirty": true,
+      "workingTreeHash": "2241dd689405cc52970f9f0be515276ed372a29e9bfa068e89f434bbcac245f6"
+    },
+    "marker": {
+      "revision": "bb4fc8fec8c9d09fe59db9b0d70352ff33cde8f8",
+      "dirty": false,
+      "workingTreeHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "one-theme": {
+      "revision": "7fbd047a87ecf1367c896b19ff270cdc28d319f7",
+      "dirty": false,
+      "workingTreeHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    }
+  },
+  "fixtures": [
+    {
+      "file": "ide-features/signal.ts",
+      "sha256": "7158628edf35614e3687397ce9ca44806ff3f8bbcebc9c12e789db5a0bfcbe12"
+    }
+  ],
   "images": [
     {
       "file": "demo.png",
       "label": "Apply semantic classifications from the TypeScript server.",
       "width": 1150,
-      "height": 600
+      "height": 600,
+      "sha256": "e4c383a8661f7261498ef6a76455f164f89a30c1ec4308f79c791bcd3d684252"
     }
   ]
 }
