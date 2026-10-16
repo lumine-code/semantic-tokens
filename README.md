@@ -24,7 +24,10 @@ To install `semantic-tokens` search for it in the Install pane of the Lumine set
 Commands available in `lumine-workspace`:
 
 - `semantic-tokens:toggle`: turn the semantic highlighting layered over the grammar on or off,
-- `semantic-tokens:refresh`: ask the providers for the active file's tokens again.
+
+Commands available in `lumine-text-editor:not([mini])`:
+
+- `semantic-tokens:refresh`: ask the providers for this editor's tokens again.
 
 ## Usage
 

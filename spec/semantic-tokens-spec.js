@@ -1055,7 +1055,7 @@ describe("semantic-tokens", () => {
       });
       await microtasks();
       const before = calls.length;
-      lumine.commands.dispatch(lumine.workspace.getElement(), "semantic-tokens:refresh");
+      lumine.commands.dispatch(editor.getElement(), "semantic-tokens:refresh");
       await microtasks();
       expect(calls.length).toBe(before + 1);
     });
