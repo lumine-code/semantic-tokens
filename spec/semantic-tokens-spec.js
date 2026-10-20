@@ -237,7 +237,9 @@ describe("semantic-tokens", () => {
 
         resolve(fresh);
         await microtasks();
-        expect(marker.isDestroyed()).toBe(true);
+        expect(marker.isDestroyed()).toBe(false);
+        expect(stateFor().markers).toEqual([marker]);
+        expectUnchangedToken();
         expect(classes()).toEqual([propertiesFor("enum", []).class]);
         expect(spans().map((span) => span.textContent)).toEqual(["spri"]);
       });

@@ -68,6 +68,58 @@ describe("semantic token manager performance boundaries", () => {
     return { values, map, queries, builds, policy };
   }
 
+  it("retains edit-translated classifications and markers on an equivalent refresh", async () => {
+    const { state, fullFetch } = await classify("spri\nspri", [token(0), token(1)]);
+    const store = state.tokens;
+    const markers = [...state.markerTokens.keys()];
+    editor.getBuffer().insert([0, 0], "\n");
+    await microtasks();
+    fullFetch.and.returnValue([token(1), token(2)]);
+    const build = spyOn(manager, "buildMarkers").and.callThrough();
+    await manager.fetch(state);
+    expect(state.tokens).toBe(store);
+    expect([...state.markerTokens.keys()]).toEqual(markers);
+    expect(build).not.toHaveBeenCalled();
+    fullFetch.and.returnValue([{ ...token(1), type: "variable" }, token(2)]);
+    await manager.fetch(state);
+    expect(state.tokens).not.toBe(store);
+    expect(build).toHaveBeenCalled();
+    expect(markers[0].isDestroyed()).toBeTrue();
+    expect(markers[1].isDestroyed()).toBeFalse();
+    expect([...state.markerTokens.keys()]).toContain(markers[1]);
+  });
+
+  it("cannot publish a classification comparison overtaken by an edit", async () => {
+    const { state } = await classify("spri", [token(0)]);
+    const store = state.tokens;
+    let finish;
+    spyOn(store, "matchesAsync").and.returnValue(
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+    );
+    const pending = manager.fetch(state);
+    await microtasks();
+    editor.getBuffer().insert([0, 2], "x");
+    finish(false);
+    await pending;
+    expect(state.tokens).toBe(store);
+    expect(store.values()[0].length).toBe(5);
+  });
+
+  it("does not rescan a sparse viewport's whole old index to retain its few markers", async () => {
+    const tokens = Array.from({ length: 50000 }, (_, row) => token(row));
+    const { state, fullFetch } = await classify("spri\n".repeat(tokens.length), tokens);
+    const oldStore = state.tokens;
+    spyOn(oldStore, "orderedTokens").and.callThrough();
+    fullFetch.and.returnValue([{ ...tokens[0], type: "class" }, ...tokens.slice(1)]);
+    await manager.fetch(state);
+    expect(oldStore.orderedTokens).not.toHaveBeenCalled();
+    expect(state.tokens).not.toBe(oldStore);
+    expect(state.markerTokens.size).toBeLessThan(250);
+    expect(state.tokens.tokensInRows(0, 0)[0].type).toBe("class");
+  });
+
   it("edits and scrolls a 100k-token document without enumerating the full cache", async () => {
     const count = 100000;
     const { state, fullFetch } = await classify(

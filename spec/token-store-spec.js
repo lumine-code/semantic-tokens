@@ -6,6 +6,27 @@ const geometry = (tokens) => tokens.map(({ row, column, length }) => [row, colum
 const insertion = (at, newText) => ({ oldRange: [at, at], newText });
 
 describe("indexed semantic token cache", () => {
+  it("compares fresh classifications against translated records without flattening", async () => {
+    const store = new TokenStore([token(1, 2), { ...token(3, 0), modifiers: ["readonly"] }]);
+    store.applyChange(insertion([0, 0], "\n"));
+    spyOn(store, "values").and.callThrough();
+    const current = [token(2, 2), { ...token(4, 0), modifiers: ["readonly"] }];
+    expect(await store.matchesAsync(current, () => true)).toBeTrue();
+    expect(store.matches(current.toReversed())).toBeFalse();
+    expect(store.matches([...current, token(5, 0)])).toBeFalse();
+    expect(store.matches(current.slice(0, 1))).toBeFalse();
+    expect(store.matches([token(2, 2), { ...token(4, 0), modifiers: ["deprecated"] }])).toBeFalse();
+    expect(store.values).not.toHaveBeenCalled();
+    expect(await store.matchesAsync(current, () => false)).toBeNull();
+  });
+
+  it("owns modifier lists so provider mutation cannot hide a classification change", () => {
+    const input = { ...token(0, 0), modifiers: ["readonly"] };
+    const store = new TokenStore([input]);
+    input.modifiers[0] = "deprecated";
+    expect(store.matches([input])).toBeFalse();
+    expect(store.values()[0].modifiers).toEqual(["readonly"]);
+  });
   it("owns sorted provider records without retaining provider markers", () => {
     const input = [token(2, 4), { ...token(0, 4), marker: {} }, token(1, 1, 0)];
     const store = new TokenStore(input);
@@ -27,7 +48,8 @@ describe("indexed semantic token cache", () => {
     store.applyChange(insertion([0, 0], "\n\n"));
     expect(store.tokensInRows(22, 22)[0]).toBe(record);
     expect(record.marker).toBe(marker);
-    expect(record.modifiers).toBe(modifiers);
+    expect(record.modifiers).toEqual(modifiers);
+    expect(record.modifiers).not.toBe(modifiers);
     expect(record.row).toBe(22);
   });
 
