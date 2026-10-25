@@ -1,4 +1,9 @@
 describe("Viewport tracking across editor windows", () => {
+  // Analysis fixtures use a real grammar; None deliberately disables this package.
+  beforeEach(async () => {
+    await lumine.packages.activatePackage("language-text");
+  });
+
   let editor, tracker, extra, mainObservers;
 
   beforeEach(async () => {

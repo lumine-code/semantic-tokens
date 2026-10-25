@@ -1,4 +1,9 @@
 describe("semantic provider range mode ownership", () => {
+  // Analysis fixtures use a real grammar; None deliberately disables this package.
+  beforeEach(async () => {
+    await lumine.packages.activatePackage("language-text");
+  });
+
   let main, editor, providers;
   const tokens = (type) => [{ row: 0, column: 0, length: 4, type }];
   async function flush() {

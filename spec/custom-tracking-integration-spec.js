@@ -8,6 +8,11 @@ async function microtasks() {
 }
 
 describe("semantic token range tracking integration", () => {
+  // Analysis fixtures use a real grammar; None deliberately disables this package.
+  beforeEach(async () => {
+    await lumine.packages.activatePackage("language-text");
+  });
+
   let editor, mainModule, manager, disposables;
 
   beforeEach(async () => {

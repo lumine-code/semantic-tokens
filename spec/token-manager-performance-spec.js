@@ -10,6 +10,11 @@ async function microtasks(count = 40) {
 }
 
 describe("semantic token manager performance boundaries", () => {
+  // Analysis fixtures use a real grammar; None deliberately disables this package.
+  beforeEach(async () => {
+    await lumine.packages.activatePackage("language-text");
+  });
+
   let mainModule, manager, editor, disposables;
 
   beforeEach(async () => {

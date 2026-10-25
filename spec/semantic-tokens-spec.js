@@ -21,6 +21,11 @@ const token = (row, column, length, type, modifiers = []) => ({
 });
 
 describe("semantic-tokens", () => {
+  // Analysis fixtures use a real grammar; None deliberately disables this package.
+  beforeEach(async () => {
+    await lumine.packages.activatePackage("language-text");
+  });
+
   let mainModule, manager, editor, disposables;
 
   const stateFor = () => manager.states.get(editor);
@@ -70,6 +75,24 @@ describe("semantic-tokens", () => {
     disposables.add(mainModule.consumeSemanticTokens(provider));
     return provider;
   }
+
+  it("clears tokens and suspends providers for None until a grammar is selected", async () => {
+    const grammar = editor.getGrammar();
+    const semanticTokens = jasmine.createSpy("tokens").and.returnValue([token(0, 0, 5, "keyword")]);
+    addProvider({ semanticTokens });
+    await microtasks();
+    expect(spans().length).toBe(1);
+    const calls = semanticTokens.calls.count();
+    editor.setGrammar(lumine.grammars.nullGrammar);
+    expect(lumine.commands.canDispatch(editor.getElement(), "semantic-tokens:refresh")).toBeFalse();
+    await manager.fetch(stateFor());
+    expect(spans()).toEqual([]);
+    expect(semanticTokens.calls.count()).toBe(calls);
+    editor.setGrammar(grammar);
+    await microtasks();
+    expect(semanticTokens.calls.count()).toBeGreaterThan(calls);
+    expect(spans().length).toBe(1);
+  });
 
   it("asks nothing while the setting is off", async () => {
     lumine.config.set("semantic-tokens.enabled", false);

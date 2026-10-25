@@ -2,6 +2,11 @@ const path = require("node:path");
 const packageRoot = path.join(__dirname, "..");
 
 describe("semantic-tokens menu commands in captured presentation contexts", () => {
+  // Analysis fixtures use a real grammar; None deliberately disables this package.
+  beforeEach(async () => {
+    await lumine.packages.activatePackage("language-text");
+  });
+
   let first, second, firstPane, notebook, captured;
 
   beforeEach(async () => {

@@ -4,6 +4,11 @@ const { CompositeDisposable, Disposable } = require("lumine");
 const packageRoot = path.join(__dirname, "..");
 
 describe("semantic token decoration styles", () => {
+  // Analysis fixtures use a real grammar; None deliberately disables this package.
+  beforeEach(async () => {
+    await lumine.packages.activatePackage("language-text");
+  });
+
   let editor, mainModule, disposables;
 
   beforeEach(async () => {

@@ -1,4 +1,9 @@
 describe("semantic token viewport tracking", () => {
+  // Analysis fixtures use a real grammar; None deliberately disables this package.
+  beforeEach(async () => {
+    await lumine.packages.activatePackage("language-text");
+  });
+
   let editor, tracker, requests, intersectionObservers, resizeObservers;
 
   const intersect = (observer, width, height) =>
