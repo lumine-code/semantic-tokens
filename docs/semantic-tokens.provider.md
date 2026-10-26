@@ -11,6 +11,8 @@ Supplies the classification of the identifiers rendered over the grammar's highl
 
 If your tokens come from a language server, register an adapter with `ide` instead — it already provides this service on every adapter's behalf. Implement this directly only for a source that is not LSP: a compiler you already run, an index of your own.
 
+Edit tracking uses immutable text sources and exact UTF-16 extents. Insertions up to 64 Ki UTF-16 units can extend an existing identifier classification optimistically. Larger insertions retire classifications touching the insertion until a fresh provider result arrives; unaffected tokens still move by the exact edit geometry. This bounds work during editing without flattening a bulk replacement.
+
 ## Registration
 
 In your `package.json`:

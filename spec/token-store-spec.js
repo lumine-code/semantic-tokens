@@ -6,6 +6,75 @@ const geometry = (tokens) => tokens.map(({ row, column, length }) => [row, colum
 const insertion = (at, newText) => ({ oldRange: [at, at], newText });
 
 describe("indexed semantic token cache", () => {
+  it("shifts source-backed bulk edits without reading their lazy string or retaining touched classifications", () => {
+    const { TextBuffer } = require("lumine");
+    const buffer = new TextBuffer("\r\n" + "x".repeat(65536));
+    const source = buffer.getTextSnapshot();
+    const store = new TokenStore([token(0, 0), token(2, 3)]);
+    const change = {
+      oldRange: [
+        [0, 2],
+        [0, 2],
+      ],
+      newTextSource: {
+        length: source.length,
+        positionAt: (offset) => source.positionAt(offset),
+        toString: () => {
+          throw new Error("must not flatten source");
+        },
+      },
+      get newText() {
+        throw new Error("must not materialize change text");
+      },
+    };
+    try {
+      const result = store.applyChange(change);
+      expect(geometry(store.values())).toEqual([[3, 3, 4]]);
+      expect(result.removed.length).toBe(1);
+      expect(
+        updateTokenMarkerRanges(
+          [
+            {
+              id: 1,
+              range: [
+                [0, 0],
+                [0, 4],
+              ],
+            },
+          ],
+          change,
+        ),
+      ).toEqual([{ id: 1, range: null }]);
+    } finally {
+      buffer.destroy();
+    }
+  });
+
+  it("keeps exact Unicode identifier fragments and buffer extents for bounded source edits", () => {
+    const { TextBuffer } = require("lumine");
+    const buffer = new TextBuffer("_ż𐐀\rnot-a-new-buffer-row");
+    const source = buffer.getTextSnapshot();
+    const store = new TokenStore([token(0, 0), token(2, 3)]);
+    try {
+      store.applyChange({
+        oldRange: [
+          [0, 4],
+          [0, 4],
+        ],
+        newTextSource: source,
+        get newText() {
+          throw new Error("must use bounded source");
+        },
+      });
+      expect(geometry(store.values())).toEqual([
+        [0, 0, 8],
+        [2, 3, 4],
+      ]);
+    } finally {
+      buffer.destroy();
+    }
+  });
+
   it("compares fresh classifications against translated records without flattening", async () => {
     const store = new TokenStore([token(1, 2), { ...token(3, 0), modifiers: ["readonly"] }]);
     store.applyChange(insertion([0, 0], "\n"));
