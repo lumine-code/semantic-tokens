@@ -6,6 +6,52 @@ const geometry = (tokens) => tokens.map(({ row, column, length }) => [row, colum
 const insertion = (at, newText) => ({ oldRange: [at, at], newText });
 
 describe("indexed semantic token cache", () => {
+  it("queries distant columns without scanning a dense row and retains overlapping tokens", () => {
+    const tokens = Array.from({ length: 100000 }, (_, i) => token(0, i * 5));
+    const store = new TokenStore(tokens, { measure: true });
+    expect(geometry(store.tokensInRange([0, 400002], [0, 400017]))).toEqual([
+      [0, 400000, 4],
+      [0, 400005, 4],
+      [0, 400010, 4],
+      [0, 400015, 4],
+    ]);
+    expect(store.lastQueryMetrics.visited).toBeLessThan(100);
+    const overlapping = new TokenStore([token(0, 0, 100), token(0, 10, 5), token(0, 20, 5)]);
+    expect(geometry(overlapping.tokensInRange([0, 50], [0, 60]))).toEqual([[0, 0, 100]]);
+    expect(overlapping.tokensInRange([0, 100], [1, 0])).toEqual([]);
+    expect(overlapping.tokensInRange([0, 50], [0, 50])).toEqual([]);
+  });
+
+  it("keeps interval bounds correct across lazy row and column shifts", () => {
+    const store = new TokenStore(
+      Array.from({ length: 1000 }, (_, i) => token(Math.floor(i / 50), (i % 50) * 5)),
+    );
+    for (const change of [
+      insertion([0, 0], "abc"),
+      insertion([5, 7], "\n\n"),
+      {
+        oldRange: [
+          [3, 2],
+          [8, 11],
+        ],
+        newText: "x",
+      },
+      insertion([0, 2], "\n"),
+    ]) {
+      store.applyChange(change);
+      const all = store.values();
+      for (let row = 0; row < 25; row++)
+        for (let column = 0; column < 250; column += 13) {
+          expect(geometry(store.tokensInRange([row, column], [row, column + 17]))).toEqual(
+            geometry(
+              all.filter(
+                (t) => t.row === row && t.column < column + 17 && t.column + t.length > column,
+              ),
+            ),
+          );
+        }
+    }
+  });
   it("shifts source-backed bulk edits without reading their lazy string or retaining touched classifications", () => {
     const { TextBuffer } = require("lumine");
     const buffer = new TextBuffer("\r\n" + "x".repeat(65536));

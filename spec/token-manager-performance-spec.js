@@ -73,6 +73,31 @@ describe("semantic token manager performance boundaries", () => {
     return { values, map, queries, builds, policy };
   }
 
+  it("bounds markers to rendered columns on a dense row and updates them on horizontal scroll", async () => {
+    editor.update({ softWrapped: false, maxScreenLineLength: Infinity });
+    const { state, fullFetch } = await classify(
+      "spri ".repeat(100000),
+      Array.from({ length: 100000 }, (_, i) => token(0, i * 5)),
+    );
+    const component = editor.element.component;
+    component.updateSync();
+    await manager.renderCachedTokens(state);
+    expect(state.markerTokens.size).toBeGreaterThan(0);
+    expect(state.markerTokens.size).toBeLessThan(2000);
+    const values = spyOn(state.tokens, "values").and.callThrough();
+    state.tokens.measure = true;
+    component.setScrollLeft(300000 * component.getBaseCharacterWidth());
+    component.updateSync();
+    await microtasks();
+    await manager.renderCachedTokens(state);
+    expect(state.markerTokens.size).toBeGreaterThan(0);
+    expect(state.markerTokens.size).toBeLessThan(2000);
+    expect([...state.markerTokens.values()].every((t) => t.column > 290000)).toBeTrue();
+    expect(state.tokens.lastQueryMetrics.visited).toBeLessThan(2500);
+    expect(values).not.toHaveBeenCalled();
+    expect(fullFetch).toHaveBeenCalledTimes(1);
+  });
+
   it("retains edit-translated classifications and markers on an equivalent refresh", async () => {
     const { state, fullFetch } = await classify("spri\nspri", [token(0), token(1)]);
     const store = state.tokens;
@@ -92,6 +117,44 @@ describe("semantic token manager performance boundaries", () => {
     expect(markers[0].isDestroyed()).toBeTrue();
     expect(markers[1].isDestroyed()).toBeFalse();
     expect([...state.markerTokens.keys()]).toContain(markers[1]);
+  });
+
+  it("recycles a cached viewport's marker slots and publishes one complete decoration update", async () => {
+    const tokens = Array.from({ length: 10000 }, (_, row) => ({
+      ...token(row),
+      type: row % 2 ? "variable" : "function",
+    }));
+    const { state, fullFetch } = await classify("spri\n".repeat(tokens.length), tokens);
+    let first = 200;
+    spyOn(manager.tracker, "visibleRangeForEditor").and.callFake(() => [first, first + 20]);
+    spyOn(manager.tracker, "measureRangeForEditor").and.callFake(() => [first, first + 30]);
+    await manager.renderCachedTokens(state);
+    const oldMarkers = new Set(state.markerTokens.keys());
+    const oldTokens = [...state.markerTokens.values()];
+    const create = spyOn(state.layer, "markBufferRange").and.callThrough();
+    const update = jasmine.createSpy("decoration update");
+    disposables.add(editor.onDidUpdateDecorations(update));
+    first = 7001;
+    await manager.renderCachedTokens(state);
+    expect(create).not.toHaveBeenCalled();
+    expect(new Set(state.markerTokens.keys())).toEqual(oldMarkers);
+    expect(oldTokens.every((record) => record.marker === null)).toBeTrue();
+    expect(update).toHaveBeenCalledTimes(1);
+    for (const [marker, record] of state.markerTokens) {
+      expect(marker.getBufferRange()).toEqual([
+        [record.row, 0],
+        [record.row, 4],
+      ]);
+      const properties = state.layerDecoration.getPropertiesForMarker(marker);
+      expect(properties.class).toContain(
+        record.type === "function" ? "syntax--function" : "syntax--variable",
+      );
+    }
+    expect(state.layerDecoration.overridePropertiesByMarker.size).toBe(state.markerTokens.size);
+    editor.getBuffer().insert([first, 0], "\n");
+    for (const [marker, record] of state.markerTokens)
+      expect(marker.getBufferRange().start.row).toBe(record.row);
+    expect(fullFetch).toHaveBeenCalledTimes(1);
   });
 
   it("cannot publish a classification comparison overtaken by an edit", async () => {
