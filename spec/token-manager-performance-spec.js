@@ -74,7 +74,7 @@ describe("semantic token manager performance boundaries", () => {
   }
 
   it("bounds markers to rendered columns on a dense row and updates them on horizontal scroll", async () => {
-    editor.update({ softWrapped: false, maxScreenLineLength: Infinity });
+    editor.update({ softWrapped: false, unwrappedLineLengthLimit: Infinity });
     const { state, fullFetch } = await classify(
       "spri ".repeat(100000),
       Array.from({ length: 100000 }, (_, i) => token(0, i * 5)),
