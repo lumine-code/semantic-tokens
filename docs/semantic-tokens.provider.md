@@ -31,10 +31,14 @@ In your `package.json`:
 
 ```ts
 type SemanticTokensProvider = {
-  semanticTokens(editor: TextEditor): Promise<SemanticToken[] | null> | SemanticToken[] | null;
+  semanticTokens(
+    editor: TextEditor,
+    options?: { signal: AbortSignal; preferRange: boolean },
+  ): Promise<SemanticToken[] | null> | SemanticToken[] | null;
   semanticTokensInRange?(
     editor: TextEditor,
     range: [number, number],
+    options?: { signal: AbortSignal },
   ): Promise<SemanticToken[] | null> | SemanticToken[] | null;
   onDidInvalidate?(callback: (event: { editor?: TextEditor }) => void): Disposable;
   grammarScopes?: string[] | Set<string>;
@@ -73,13 +77,13 @@ A token is **single-line**: `row` and `column` are buffer coordinates, and `leng
 
 ## Modes
 
-The consumer asks for the whole classification first and chooses how much to decorate:
+The consumer passes an abort signal for each request. It aborts that signal when the editor changes or a newer request takes over. Providers may forward it to their backend.
 
 - **Whole document** is the default, and `semanticTokens(editor)` is asked.
 - **Cached viewport** is what a large file gets — past 5000 lines, or once a whole-document answer came back with more than 20000 tokens. The full answer is cached, and only tokens covering the screen plus a margin receive markers. Scrolling applies the cached classification synchronously, without another provider request.
-- **Remote viewport** is the fallback when `semanticTokens(editor)` returns `null`. `semanticTokensInRange(editor, [startBufferRow, endBufferRow])` is asked with an inclusive row range covering the screen plus a margin. Scrolling requests newly visible rows after it settles for 150 ms.
+- **Remote viewport** is used when `semanticTokens(editor)` returns `null`. For files past 5000 lines, a provider that supports both modes receives `preferRange: true` and can return `null` to start in viewport mode. `semanticTokensInRange(editor, [startBufferRow, endBufferRow])` receives an inclusive row range covering the screen plus a margin. Scrolling requests newly visible rows after it settles for 150 ms.
 
-Remote viewport mode is **sticky for that editor** once a range request answers or fails transiently: the whole-document request is not retried. Scrolling, folding and changes to the viewport size then ask for the rows that came into view, including while the first range request is still pending.
+Remote viewport mode keeps using range requests for that editor as long as the provider serves ranges. Scrolling, folding, and viewport changes ask for the rows that came into view, including while the first range request is pending. If the provider declines the range, the consumer tries its whole-document method again.
 
 A provider that only serves whole documents also works in large files: cached viewport rendering limits the marker count independently of its ability to serve ranges. A provider that declines both modes steps aside so another provider may serve the editor. An unsupported range request does not make remote viewport mode sticky, so a provider that gains capabilities later can be tried again.
 
