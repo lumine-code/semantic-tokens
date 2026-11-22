@@ -637,6 +637,119 @@ describe("semantic-tokens", () => {
   });
 
   describe("the viewport budget", () => {
+    function setUpRangeViewport() {
+      editor.setText("x\n".repeat(6000));
+      advanceClock(editor.getBuffer().stoppedChangingDelay + 1);
+      const firstRow = spyOn(editor, "getFirstVisibleScreenRow").and.returnValue(100);
+      const lastRow = spyOn(editor, "getLastVisibleScreenRow").and.returnValue(120);
+      const tracker = manager.tracker;
+      return (first, last) => {
+        firstRow.and.returnValue(first);
+        lastRow.and.returnValue(last);
+        tracker.scheduleEmit(tracker.states.get(editor));
+      };
+    }
+
+    it("reuses prefetched rows on small scrolls and refreshes them on provider invalidation", async () => {
+      const moveViewport = setUpRangeViewport();
+      const rangeFetch = jasmine.createSpy("range tokens").and.returnValue([]);
+      const provider = addProvider({
+        semanticTokens: () => null,
+        semanticTokensInRange: rangeFetch,
+      });
+      await microtasks();
+      expect(rangeFetch.calls.mostRecent().args[1]).toEqual([50, 170]);
+
+      moveViewport(101, 121);
+      advanceClock(150);
+      await microtasks();
+      expect(rangeFetch).toHaveBeenCalledTimes(1);
+
+      provider.invalidate({ editor });
+      await microtasks();
+      expect(rangeFetch).toHaveBeenCalledTimes(2);
+      expect(rangeFetch.calls.mostRecent().args[1]).toEqual([51, 171]);
+
+      moveViewport(200, 220);
+      advanceClock(150);
+      await microtasks();
+      expect(rangeFetch).toHaveBeenCalledTimes(3);
+      expect(rangeFetch.calls.mostRecent().args[1]).toEqual([150, 270]);
+    });
+
+    it("keeps a covering request in flight and ignores its answer after a distant scroll", async () => {
+      const moveViewport = setUpRangeViewport();
+      const requests = [];
+      addProvider({
+        semanticTokens: () => null,
+        semanticTokensInRange: (target, rows, { signal }) =>
+          new Promise((resolve) => requests.push({ rows, signal, resolve })),
+      });
+      await microtasks();
+
+      moveViewport(101, 121);
+      advanceClock(150);
+      await microtasks();
+      expect(requests.length).toBe(1);
+      expect(requests[0].signal.aborted).toBe(false);
+
+      moveViewport(200, 220);
+      advanceClock(150);
+      await microtasks();
+      expect(requests.length).toBe(2);
+      expect(requests[0].signal.aborted).toBe(true);
+      requests[1].resolve([token(200, 0, 1, "enumMember")]);
+      await microtasks();
+      requests[0].resolve([token(100, 0, 1, "string")]);
+      await microtasks();
+      expect(stateFor().tokens.map(({ row, type }) => [row, type])).toEqual([[200, "enumMember"]]);
+    });
+
+    it("discards a range that finished before a distant scroll settled", async () => {
+      const moveViewport = setUpRangeViewport();
+      const requests = [];
+      addProvider({
+        semanticTokens: () => null,
+        semanticTokensInRange: () => new Promise((resolve) => requests.push(resolve)),
+      });
+      await microtasks();
+
+      moveViewport(200, 220);
+      requests[0]([token(100, 0, 1, "string")]);
+      await microtasks();
+      expect(stateFor().tokens.length).toBe(0);
+
+      advanceClock(150);
+      await microtasks();
+      expect(requests.length).toBe(2);
+      requests[1]([token(200, 0, 1, "enumMember")]);
+      await microtasks();
+      expect(stateFor().tokens.map(({ row, type }) => [row, type])).toEqual([[200, "enumMember"]]);
+    });
+
+    it("retries a failed range on the next settled layout event at the same viewport", async () => {
+      const moveViewport = setUpRangeViewport();
+      const rangeFetch = jasmine
+        .createSpy("range tokens")
+        .and.returnValue([token(100, 0, 1, "string")]);
+      addProvider({ semanticTokens: () => null, semanticTokensInRange: rangeFetch });
+      await microtasks();
+
+      rangeFetch.and.callFake(() => Promise.reject(new Error("temporarily unavailable")));
+      moveViewport(200, 220);
+      advanceClock(150);
+      await microtasks();
+      expect(rangeFetch).toHaveBeenCalledTimes(2);
+      expect(stateFor().tokens.map(({ row }) => row)).toEqual([100]);
+
+      rangeFetch.and.returnValue([token(200, 0, 1, "enumMember")]);
+      moveViewport(200, 220);
+      advanceClock(150);
+      await microtasks();
+      expect(rangeFetch).toHaveBeenCalledTimes(3);
+      expect(stateFor().tokens.map(({ row, type }) => [row, type])).toEqual([[200, "enumMember"]]);
+    });
+
     it("updates the viewport even while its first range answer is pending", async () => {
       editor.setText("x\n".repeat(6000));
       advanceClock(editor.getBuffer().stoppedChangingDelay + 1);

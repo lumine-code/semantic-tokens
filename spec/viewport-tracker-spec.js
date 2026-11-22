@@ -43,12 +43,9 @@ describe("semantic token viewport tracking", () => {
     const ViewportTracker = require("../lib/viewport-tracker");
     tracker = new ViewportTracker();
     requests = [];
-    tracker.onDidBecomeStale(({ editor: target, range }) => {
-      requests.push(range);
-      // The manager calls this when it dispatches the provider request.
-      tracker.rangeForEditor(target);
+    tracker.onDidBecomeStale(({ editor: target }) => {
+      requests.push(tracker.measureRangeForEditor(target));
     });
-    tracker.rangeForEditor(editor);
   });
 
   afterEach(() => {
@@ -70,17 +67,12 @@ describe("semantic token viewport tracking", () => {
     expect(requests).toEqual([[0, 250]]);
   });
 
-  it("coalesces successive layout changes and skips a range already requested", () => {
+  it("coalesces successive layout changes before reporting the settled viewport", () => {
     editor.getLastVisibleScreenRow.and.returnValue(200);
     resizeObservers[0].callback();
     advanceClock(100);
     editor.getLastVisibleScreenRow.and.returnValue(250);
     resizeObservers[0].callback();
-    advanceClock(150);
-    expect(requests).toEqual([[0, 300]]);
-
-    resizeObservers[0].callback();
-    tracker.scheduleEmit(tracker.states.get(editor));
     advanceClock(150);
     expect(requests).toEqual([[0, 300]]);
   });
@@ -100,14 +92,14 @@ describe("semantic token viewport tracking", () => {
   it("requests the first measured viewport after an unrendered editor is revealed", () => {
     editor.getFirstVisibleScreenRow.and.returnValue(NaN);
     editor.getLastVisibleScreenRow.and.returnValue(NaN);
-    expect(tracker.rangeForEditor(editor)).toEqual([0, 50]);
+    expect(tracker.measureRangeForEditor(editor)).toEqual([0, 50]);
     editor.getFirstVisibleScreenRow.and.returnValue(300);
     editor.getLastVisibleScreenRow.and.returnValue(320);
     intersect(intersectionObservers[0], 800, 400);
     expect(requests).toEqual([[250, 370]]);
   });
 
-  it("lets the manager's source fetch handle edits and skips the resulting viewport events", () => {
+  it("suppresses settled viewport events during edits and resumes afterwards", () => {
     editor.setText("x\n".repeat(2100));
     editor.getLastVisibleScreenRow.and.returnValue(200);
     resizeObservers[0].callback();
@@ -115,11 +107,10 @@ describe("semantic token viewport tracking", () => {
     expect(requests).toEqual([]);
 
     advanceClock(editor.getBuffer().stoppedChangingDelay + 1);
-    tracker.rangeForEditor(editor);
     resizeObservers[0].callback();
     tracker.scheduleEmit(tracker.states.get(editor));
     advanceClock(150);
-    expect(requests).toEqual([]);
+    expect(requests).toEqual([[0, 250]]);
   });
 
   it("disconnects observers and ignores queued callbacks after disposal", () => {

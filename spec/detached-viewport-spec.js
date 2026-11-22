@@ -51,7 +51,6 @@ describe("Viewport tracking across editor windows", () => {
   it("retires scroll callbacks queued in the source window before transfer", async () => {
     const timer = spyOn(window, "setTimeout").and.callThrough();
     const state = tracker.states.get(editor);
-    tracker.rangeForEditor(editor);
     tracker.scheduleEmit(state);
     const callback = timer.calls.mostRecent().args[0];
     await lumine.workspace.movePaneItem(editor, {
